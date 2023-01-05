@@ -115,7 +115,7 @@ describe("anchor-escrow", () => {
 
   it("Initialize escrow", async () => {
     await program.methods
-      .initialize(randomSeed, new anchor.BN(initializerAmount), new anchor.BN(takerAmount))
+      .initialize(randomSeed, new anchor.BN(initializerAmount))
       .accounts({
         initializer: initializer.publicKey,
         vault: vaultKey,
@@ -138,27 +138,51 @@ describe("anchor-escrow", () => {
     // Check that the values in the escrow account match what we expect.
     assert.ok(fetchedEscrowState.initializerKey.equals(initializer.publicKey));
     assert.ok(fetchedEscrowState.initializerAmount.toNumber() == initializerAmount);
-    assert.ok(fetchedEscrowState.takerAmount.toNumber() == takerAmount);
     assert.ok(fetchedEscrowState.initializerDepositTokenAccount.equals(initializerTokenAccountA));
-    assert.ok(fetchedEscrowState.initializerReceiveTokenAccount.equals(initializerTokenAccountB));
   });
 
-  it("Exchange escrow state", async () => {
+  // it("Exchange escrow state", async () => {
+  //   await program.methods
+  //     .exchange()
+  //     .accounts({
+  //       taker: taker.publicKey,
+  //       takerDepositTokenAccount: takerTokenAccountB,
+  //       takerReceiveTokenAccount: takerTokenAccountA,
+  //       initializerDepositTokenAccount: initializerTokenAccountA,
+  //       initializerReceiveTokenAccount: initializerTokenAccountB,
+  //       initializer: initializer.publicKey,
+  //       escrowState: escrowStateKey,
+  //       vault: vaultKey,
+  //       vaultAuthority: vaultAuthorityKey,
+  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //     })
+  //     .signers([taker])
+  //     .rpc();
+
+  //   let fetchedInitializerTokenAccountA = await getAccount(connection, initializerTokenAccountA);
+  //   let fetchedInitializerTokenAccountB = await getAccount(connection, initializerTokenAccountB);
+  //   let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
+  //   let fetchedTakerTokenAccountB = await getAccount(connection, takerTokenAccountB);
+
+  //   assert.ok(Number(fetchedTakerTokenAccountA.amount) == initializerAmount);
+  //   assert.ok(Number(fetchedInitializerTokenAccountA.amount) == 0);
+  //   assert.ok(Number(fetchedInitializerTokenAccountB.amount) == takerAmount);
+  //   assert.ok(Number(fetchedTakerTokenAccountB.amount) == 0);
+  // });
+
+  it("Approve escrow state", async () => {
     await program.methods
-      .exchange()
+      .approve()
       .accounts({
-        taker: taker.publicKey,
-        takerDepositTokenAccount: takerTokenAccountB,
+        initializer: initializer.publicKey,
         takerReceiveTokenAccount: takerTokenAccountA,
         initializerDepositTokenAccount: initializerTokenAccountA,
-        initializerReceiveTokenAccount: initializerTokenAccountB,
-        initializer: initializer.publicKey,
         escrowState: escrowStateKey,
         vault: vaultKey,
         vaultAuthority: vaultAuthorityKey,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .signers([taker])
+      .signers([initializer])
       .rpc();
 
     let fetchedInitializerTokenAccountA = await getAccount(connection, initializerTokenAccountA);
