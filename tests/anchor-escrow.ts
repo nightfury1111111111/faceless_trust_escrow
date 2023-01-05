@@ -177,6 +177,7 @@ describe("anchor-escrow", () => {
         initializer: initializer.publicKey,
         takerReceiveTokenAccount: takerTokenAccountA,
         initializerDepositTokenAccount: initializerTokenAccountA,
+        // initializer: initializer.publicKey,
         escrowState: escrowStateKey,
         vault: vaultKey,
         vaultAuthority: vaultAuthorityKey,
@@ -186,14 +187,14 @@ describe("anchor-escrow", () => {
       .rpc();
 
     let fetchedInitializerTokenAccountA = await getAccount(connection, initializerTokenAccountA);
-    let fetchedInitializerTokenAccountB = await getAccount(connection, initializerTokenAccountB);
+    // let fetchedInitializerTokenAccountB = await getAccount(connection, initializerTokenAccountB);
     let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
-    let fetchedTakerTokenAccountB = await getAccount(connection, takerTokenAccountB);
+    // let fetchedTakerTokenAccountB = await getAccount(connection, takerTokenAccountB);
 
     assert.ok(Number(fetchedTakerTokenAccountA.amount) == initializerAmount);
     assert.ok(Number(fetchedInitializerTokenAccountA.amount) == 0);
-    assert.ok(Number(fetchedInitializerTokenAccountB.amount) == takerAmount);
-    assert.ok(Number(fetchedTakerTokenAccountB.amount) == 0);
+    // assert.ok(Number(fetchedInitializerTokenAccountB.amount) == takerAmount);
+    // assert.ok(Number(fetchedTakerTokenAccountB.amount) == 0);
   });
 
   it("Initialize escrow and cancel escrow", async () => {
@@ -202,13 +203,12 @@ describe("anchor-escrow", () => {
     await mintTo(connection, initializer, mintA, initializerTokenAccountA, mintAuthority, initializerAmount);
 
     await program.methods
-      .initialize(randomSeed, new anchor.BN(initializerAmount), new anchor.BN(takerAmount))
+      .initialize(randomSeed, new anchor.BN(initializerAmount))
       .accounts({
         initializer: initializer.publicKey,
         vault: vaultKey,
         mint: mintA,
         initializerDepositTokenAccount: initializerTokenAccountA,
-        initializerReceiveTokenAccount: initializerTokenAccountB,
         escrowState: escrowStateKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
