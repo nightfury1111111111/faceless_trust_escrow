@@ -96,6 +96,27 @@ pub mod anchor_escrow {
 
         Ok(())
     }
+
+    pub fn approve(ctx: Context<Approve>) -> Result<()> {
+        let (_vault_authority, vault_authority_bump) =
+            Pubkey::find_program_address(&[AUTHORITY_SEED], ctx.program_id);
+        let authority_seeds = &[&AUTHORITY_SEED[..], &[vault_authority_bump]];
+
+        token::transfer(
+            ctx.accounts
+                .into_transfer_to_taker_context()
+                .with_signer(&[&authority_seeds[..]]),
+            ctx.accounts.escrow_state.initializer_amount,
+        )?;
+
+        token::close_account(
+            ctx.accounts
+                .into_close_context()
+                .with_signer(&[&authority_seeds[..]]),
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -177,6 +198,29 @@ pub struct Exchange<'info> {
         constraint = escrow_state.taker_amount <= taker_deposit_token_account.amount,
         constraint = escrow_state.initializer_deposit_token_account == *initializer_deposit_token_account.to_account_info().key,
         constraint = escrow_state.initializer_receive_token_account == *initializer_receive_token_account.to_account_info().key,
+        constraint = escrow_state.initializer_key == *initializer.key,
+        close = initializer
+    )]
+    pub escrow_state: Box<Account<'info, EscrowState>>,
+    #[account(mut)]
+    pub vault: Box<Account<'info, TokenAccount>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub vault_authority: AccountInfo<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct Approve<'info> {
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub initializer: Signer<'info>,
+    #[account(mut)]
+    pub taker_receive_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub initializer_deposit_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
+        constraint = escrow_state.initializer_deposit_token_account == *initializer_deposit_token_account.to_account_info().key,
         constraint = escrow_state.initializer_key == *initializer.key,
         close = initializer
     )]
@@ -271,6 +315,26 @@ impl<'info> Exchange<'info> {
         let cpi_accounts = CloseAccount {
             account: self.vault.to_account_info(),
             destination: self.initializer.clone(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+}
+
+impl<'info> Approve<'info> {
+    fn into_transfer_to_taker_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.taker_receive_token_account.to_account_info(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+
+    fn into_close_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.vault.to_account_info(),
+            destination: self.initializer.to_account_info().clone(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
