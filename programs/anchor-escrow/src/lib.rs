@@ -15,7 +15,7 @@ pub mod anchor_escrow {
     pub fn initialize(
         ctx: Context<Initialize>,
         random_seed: u64,
-        initializer_amount: u64,
+        initializer_amount: [u64; 5],
     ) -> Result<()> {
         ctx.accounts.escrow_state.initializer_key = *ctx.accounts.initializer.key;
         ctx.accounts.escrow_state.initializer_deposit_token_account = *ctx
@@ -37,7 +37,11 @@ pub mod anchor_escrow {
 
         token::transfer(
             ctx.accounts.into_transfer_to_pda_context(),
-            ctx.accounts.escrow_state.initializer_amount,
+            ctx.accounts.escrow_state.initializer_amount[0]
+                + ctx.accounts.escrow_state.initializer_amount[1]
+                + ctx.accounts.escrow_state.initializer_amount[2]
+                + ctx.accounts.escrow_state.initializer_amount[3]
+                + ctx.accounts.escrow_state.initializer_amount[4],
         )?;
 
         Ok(())
@@ -52,7 +56,11 @@ pub mod anchor_escrow {
             ctx.accounts
                 .into_transfer_to_initializer_context()
                 .with_signer(&[&authority_seeds[..]]),
-            ctx.accounts.escrow_state.initializer_amount,
+            ctx.accounts.escrow_state.initializer_amount[0]
+                + ctx.accounts.escrow_state.initializer_amount[1]
+                + ctx.accounts.escrow_state.initializer_amount[2]
+                + ctx.accounts.escrow_state.initializer_amount[3]
+                + ctx.accounts.escrow_state.initializer_amount[4],
         )?;
 
         token::close_account(
@@ -90,7 +98,7 @@ pub mod anchor_escrow {
     //     Ok(())
     // }
 
-    pub fn approve(ctx: Context<Approve>) -> Result<()> {
+    pub fn approve(ctx: Context<Approve>, milestone_idx: u64) -> Result<()> {
         let (_vault_authority, vault_authority_bump) =
             Pubkey::find_program_address(&[AUTHORITY_SEED], ctx.program_id);
         let authority_seeds = &[&AUTHORITY_SEED[..], &[vault_authority_bump]];
@@ -99,7 +107,7 @@ pub mod anchor_escrow {
             ctx.accounts
                 .into_transfer_to_taker_context()
                 .with_signer(&[&authority_seeds[..]]),
-            ctx.accounts.escrow_state.initializer_amount,
+            ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize],
         )?;
 
         token::close_account(
@@ -113,7 +121,7 @@ pub mod anchor_escrow {
 }
 
 #[derive(Accounts)]
-#[instruction(escrow_seed: u64, initializer_amount: u64)]
+#[instruction(escrow_seed: u64, initializer_amount: [u64;5])]
 pub struct Initialize<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
@@ -130,7 +138,7 @@ pub struct Initialize<'info> {
     pub vault: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = initializer_deposit_token_account.amount >= initializer_amount
+        constraint = initializer_deposit_token_account.amount >=(initializer_amount[0]+initializer_amount[1]+initializer_amount[2]+initializer_amount[3]+initializer_amount[4])
     )]
     pub initializer_deposit_token_account: Account<'info, TokenAccount>,
     #[account(
@@ -225,12 +233,12 @@ pub struct EscrowState {
     pub random_seed: u64,
     pub initializer_key: Pubkey,
     pub initializer_deposit_token_account: Pubkey,
-    pub initializer_amount: u64,
+    pub initializer_amount: [u64; 5],
 }
 
 impl EscrowState {
     pub fn space() -> usize {
-        8 + 80
+        8 + 112
     }
 }
 
