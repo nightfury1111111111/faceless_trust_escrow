@@ -10,6 +10,13 @@ declare_id!("6DAH49WWWrpGREtQfgVZNTj7nWAFJXqn3ub3gemtKsLf");
 pub mod anchor_escrow {
     use super::*;
 
+    pub fn init_admin(ctx: Context<InitAdmin>) -> Result<()> {
+        ctx.accounts.admin.admin1 = *ctx.accounts.admin1.key;
+        ctx.accounts.admin.admin2 = *ctx.accounts.admin2.key;
+
+        Ok(())
+    }
+
     const AUTHORITY_SEED: &[u8] = b"authority";
 
     pub fn initialize(
@@ -110,14 +117,38 @@ pub mod anchor_escrow {
             ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize],
         )?;
 
-        token::close_account(
-            ctx.accounts
-                .into_close_context()
-                .with_signer(&[&authority_seeds[..]]),
-        )?;
+        ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize] = 0;
+
+        // token::close_account(
+        //     ctx.accounts
+        //         .into_close_context()
+        //         .with_signer(&[&authority_seeds[..]]),
+        // )?;
 
         Ok(())
     }
+}
+
+#[derive(Accounts)]
+pub struct InitAdmin<'info> {
+    #[account(mut)]
+    pub admin1: Signer<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub admin2: AccountInfo<'info>,
+    #[account(
+        init,
+        seeds = [b"admin".as_ref()],
+        bump,
+        payer = admin1,
+        space = Admin::space()
+    )]
+    pub admin: Box<Account<'info, Admin>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -205,6 +236,7 @@ pub struct Cancel<'info> {
 // }
 
 #[derive(Accounts)]
+#[instruction(milestone_idx:u64)]
 pub struct Approve<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
@@ -217,7 +249,7 @@ pub struct Approve<'info> {
         mut,
         constraint = escrow_state.initializer_deposit_token_account == *initializer_deposit_token_account.to_account_info().key,
         constraint = escrow_state.initializer_key == *initializer.key,
-        close = initializer
+        constraint = escrow_state.initializer_amount[milestone_idx as usize] > 0,
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
     #[account(mut)]
@@ -239,6 +271,18 @@ pub struct EscrowState {
 impl EscrowState {
     pub fn space() -> usize {
         8 + 112
+    }
+}
+
+#[account]
+pub struct Admin {
+    pub admin1: Pubkey,
+    pub admin2: Pubkey,
+}
+
+impl Admin {
+    pub fn space() -> usize {
+        8 + 64
     }
 }
 
@@ -313,12 +357,12 @@ impl<'info> Approve<'info> {
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
     }
 
-    fn into_close_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
-        let cpi_accounts = CloseAccount {
-            account: self.vault.to_account_info(),
-            destination: self.initializer.clone().to_account_info(),
-            authority: self.vault_authority.clone(),
-        };
-        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
-    }
+    // fn into_close_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+    //     let cpi_accounts = CloseAccount {
+    //         account: self.vault.to_account_info(),
+    //         destination: self.initializer.clone().to_account_info(),
+    //         authority: self.vault_authority.clone(),
+    //     };
+    //     CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    // }
 }

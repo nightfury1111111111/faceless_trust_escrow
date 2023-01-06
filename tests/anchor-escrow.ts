@@ -58,6 +58,20 @@ describe("anchor-escrow", () => {
     program.programId
   )[0];
 
+  // Random Seed
+  const randomSeed2: anchor.BN = new anchor.BN(Math.floor(Math.random() * 100000000));
+
+  // Derive PDAs: escrowStateKey, vaultKey, vaultAuthorityKey
+  const escrowStateKey2 = PublicKey.findProgramAddressSync(
+    [Buffer.from(anchor.utils.bytes.utf8.encode(stateSeed)), randomSeed2.toArrayLike(Buffer, "le", 8)],
+    program.programId
+  )[0];
+
+  const vaultKey2 = PublicKey.findProgramAddressSync(
+    [Buffer.from(anchor.utils.bytes.utf8.encode(vaultSeed)), randomSeed2.toArrayLike(Buffer, "le", 8)],
+    program.programId
+  )[0];
+
   const vaultAuthorityKey = PublicKey.findProgramAddressSync(
     [Buffer.from(anchor.utils.bytes.utf8.encode(authoritySeed))],
     program.programId
@@ -115,7 +129,13 @@ describe("anchor-escrow", () => {
 
   it("Initialize escrow", async () => {
     await program.methods
-      .initialize(randomSeed, new anchor.BN(initializerAmount))
+      .initialize(randomSeed, [
+        new anchor.BN(50),
+        new anchor.BN(150),
+        new anchor.BN(200),
+        new anchor.BN(50),
+        new anchor.BN(50),
+      ])
       .accounts({
         initializer: initializer.publicKey,
         vault: vaultKey,
@@ -137,7 +157,7 @@ describe("anchor-escrow", () => {
 
     // Check that the values in the escrow account match what we expect.
     assert.ok(fetchedEscrowState.initializerKey.equals(initializer.publicKey));
-    assert.ok(fetchedEscrowState.initializerAmount.toNumber() == initializerAmount);
+    assert.ok(fetchedEscrowState.initializerAmount[0].toNumber() == 50);
     assert.ok(fetchedEscrowState.initializerDepositTokenAccount.equals(initializerTokenAccountA));
   });
 
@@ -172,12 +192,11 @@ describe("anchor-escrow", () => {
 
   it("Approve escrow state", async () => {
     await program.methods
-      .approve()
+      .approve(new anchor.BN(0))
       .accounts({
         initializer: initializer.publicKey,
         takerReceiveTokenAccount: takerTokenAccountA,
         initializerDepositTokenAccount: initializerTokenAccountA,
-        // initializer: initializer.publicKey,
         escrowState: escrowStateKey,
         vault: vaultKey,
         vaultAuthority: vaultAuthorityKey,
@@ -186,15 +205,26 @@ describe("anchor-escrow", () => {
       .signers([initializer])
       .rpc();
 
-    let fetchedInitializerTokenAccountA = await getAccount(connection, initializerTokenAccountA);
-    // let fetchedInitializerTokenAccountB = await getAccount(connection, initializerTokenAccountB);
     let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
-    // let fetchedTakerTokenAccountB = await getAccount(connection, takerTokenAccountB);
 
-    assert.ok(Number(fetchedTakerTokenAccountA.amount) == initializerAmount);
-    assert.ok(Number(fetchedInitializerTokenAccountA.amount) == 0);
-    // assert.ok(Number(fetchedInitializerTokenAccountB.amount) == takerAmount);
-    // assert.ok(Number(fetchedTakerTokenAccountB.amount) == 0);
+    assert.ok(Number(fetchedTakerTokenAccountA.amount) == 50);
+    let fetchedEscrowState = await program.account.escrowState.fetch(escrowStateKey);
+    assert.ok(Number(fetchedEscrowState.initializerAmount[0]) == 0);
+    await program.methods
+      .approve(new anchor.BN(1))
+      .accounts({
+        initializer: initializer.publicKey,
+        takerReceiveTokenAccount: takerTokenAccountA,
+        initializerDepositTokenAccount: initializerTokenAccountA,
+        escrowState: escrowStateKey,
+        vault: vaultKey,
+        vaultAuthority: vaultAuthorityKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([initializer])
+      .rpc();
+    fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
+    assert.ok(Number(fetchedTakerTokenAccountA.amount) == 200);
   });
 
   it("Initialize escrow and cancel escrow", async () => {
@@ -203,19 +233,26 @@ describe("anchor-escrow", () => {
     await mintTo(connection, initializer, mintA, initializerTokenAccountA, mintAuthority, initializerAmount);
 
     await program.methods
-      .initialize(randomSeed, new anchor.BN(initializerAmount))
+      .initialize(randomSeed2, [
+        new anchor.BN(50),
+        new anchor.BN(150),
+        new anchor.BN(200),
+        new anchor.BN(50),
+        new anchor.BN(50),
+      ])
       .accounts({
         initializer: initializer.publicKey,
-        vault: vaultKey,
+        vault: vaultKey2,
         mint: mintA,
         initializerDepositTokenAccount: initializerTokenAccountA,
-        escrowState: escrowStateKey,
+        escrowState: escrowStateKey2,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([initializer])
       .rpc();
+    assert.ok(1 == 1);
 
     // Cancel the escrow.
     await program.methods
@@ -223,9 +260,9 @@ describe("anchor-escrow", () => {
       .accounts({
         initializer: initializer.publicKey,
         initializerDepositTokenAccount: initializerTokenAccountA,
-        vault: vaultKey,
+        vault: vaultKey2,
         vaultAuthority: vaultAuthorityKey,
-        escrowState: escrowStateKey,
+        escrowState: escrowStateKey2,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([initializer])
