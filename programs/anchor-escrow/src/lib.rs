@@ -58,7 +58,7 @@ pub mod anchor_escrow {
 
         token::transfer(
             ctx.accounts
-                .into_transfer_to_initializer_context()
+                .into_transfer_to_resolver_context()
                 .with_signer(&[&authority_seeds[..]]),
             ctx.accounts.escrow_state.initializer_amount[0]
                 + ctx.accounts.escrow_state.initializer_amount[1]
@@ -138,6 +138,7 @@ pub struct Initialize<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+// used for resolver to withdraw money in the vault
 #[derive(Accounts)]
 pub struct Cancel<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
@@ -148,11 +149,11 @@ pub struct Cancel<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub vault_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub initializer_deposit_token_account: Account<'info, TokenAccount>,
+    pub resolver_deposit_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
         constraint = escrow_state.initializer_key == *initializer.key,
-        constraint = escrow_state.initializer_deposit_token_account == *initializer_deposit_token_account.to_account_info().key,
+        constraint = escrow_state.resolver == *resolver_deposit_token_account.to_account_info().key,
         close = initializer
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
@@ -222,12 +223,10 @@ impl<'info> Initialize<'info> {
 }
 
 impl<'info> Cancel<'info> {
-    fn into_transfer_to_initializer_context(
-        &self,
-    ) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn into_transfer_to_resolver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
-            to: self.initializer_deposit_token_account.to_account_info(),
+            to: self.resolver_deposit_token_account.to_account_info(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
