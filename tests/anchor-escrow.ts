@@ -259,7 +259,7 @@ describe("anchor-escrow", () => {
       .cancel()
       .accounts({
         initializer: initializer.publicKey,
-        initializerDepositTokenAccount: initializerTokenAccountA,
+        resolverDepositTokenAccount: initializerTokenAccountA,
         vault: vaultKey2,
         vaultAuthority: vaultAuthorityKey,
         escrowState: escrowStateKey2,

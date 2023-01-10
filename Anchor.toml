@@ -2,10 +2,10 @@
 anchor_escrow = "6DAH49WWWrpGREtQfgVZNTj7nWAFJXqn3ub3gemtKsLf"
 
 [registry]
-url = "https://anchor.projectserum.com"
+url ="http://127.0.0.1:8899"
 
 [provider]
-cluster = "https://rpc-mainnet-fork.epochs.studio"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
