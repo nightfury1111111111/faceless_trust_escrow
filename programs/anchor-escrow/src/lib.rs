@@ -4,7 +4,7 @@ use anchor_spl::token::{
     TokenAccount, Transfer,
 };
 
-declare_id!("H4r9Vgfa9F9FaNUh8tkqQGQAtbaFkLBoPUHsiaou6fNj");
+declare_id!("APuaECoAAhGXEK8UPKUF7csup1n2TTtFhxZeN1V6ChY7");
 
 #[program]
 pub mod anchor_escrow {
@@ -57,7 +57,7 @@ pub mod anchor_escrow {
         Ok(())
     }
 
-    pub fn cancel(ctx: Context<Cancel>) -> Result<()> {
+    pub fn withdraw_for_resolve(ctx: Context<WithdrawForResolve>) -> Result<()> {
         let (_vault_authority, vault_authority_bump) =
             Pubkey::find_program_address(&[AUTHORITY_SEED], ctx.program_id);
         let authority_seeds = &[&AUTHORITY_SEED[..], &[vault_authority_bump]];
@@ -239,20 +239,20 @@ pub struct Initialize<'info> {
 
 // used for resolver to withdraw money in the vault
 #[derive(Accounts)]
-pub struct Cancel<'info> {
+pub struct WithdrawForResolve<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
-    pub initializer: Signer<'info>,
+    pub resolver: Signer<'info>,
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub vault_authority: AccountInfo<'info>,
-    #[account(mut)]
-    pub resolver_deposit_token_account: Account<'info, TokenAccount>,
+    #[account(mut, constraint = resolver_token_account.owner == *resolver.key)]
+    pub resolver_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = escrow_state.initializer_key == *initializer.key,
-        close = initializer
+        constraint = escrow_state.resolver_token_account == *resolver_token_account.to_account_info().key || escrow_state.admin1_token_account == *resolver_token_account.to_account_info().key,
+        close = resolver
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
@@ -340,11 +340,11 @@ impl<'info> Initialize<'info> {
     }
 }
 
-impl<'info> Cancel<'info> {
+impl<'info> WithdrawForResolve<'info> {
     fn into_transfer_to_resolver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
-            to: self.resolver_deposit_token_account.to_account_info(),
+            to: self.resolver_token_account.to_account_info(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
@@ -353,7 +353,7 @@ impl<'info> Cancel<'info> {
     fn into_close_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
         let cpi_accounts = CloseAccount {
             account: self.vault.to_account_info(),
-            destination: self.initializer.to_account_info(),
+            destination: self.resolver.to_account_info(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
