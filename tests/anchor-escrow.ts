@@ -26,7 +26,7 @@ describe("anchor-escrow", () => {
 
   // CAUTTION: if you are intended to use the program that is deployed by yourself,
   // please make sure that the programIDs are consistent
-  const programId = new PublicKey("5JNoAoDoABEYkwaXxbs6QMh6vEcVcpoaLAwwvvYWSiQm");
+  const programId = new PublicKey("CfBBNT26BB1gR6hK5fj1oFju4twyFwCjPEcMn7Q6C32u");
   const program = new anchor.Program(IDL, programId, provider);
 
   let mintA = null as PublicKey;
@@ -217,8 +217,8 @@ describe("anchor-escrow", () => {
   // });
 
   it("set fee", async () => {
-    const adminfee = 5;
-    const resolverfee = 1;
+    const adminfee = 0;
+    const resolverfee = 0;
     await program.methods
       .setFee(new anchor.BN(adminfee), new anchor.BN(resolverfee))
       .accounts({
