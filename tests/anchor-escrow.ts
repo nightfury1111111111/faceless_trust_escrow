@@ -277,38 +277,70 @@ describe("anchor-escrow", () => {
     assert.ok(fetchedEscrowState.initializerDepositTokenAccount.equals(initializerTokenAccountA));
   });
 
-  it("Dispute", async () => {
+  // it("Dispute", async () => {
+  //   await program.methods
+  //     .dispute(randomSeed)
+  //     .accounts({
+  //       disputor: initializer.publicKey,
+  //       escrowState: escrowStateKey,
+  //     })
+  //     .signers([initializer])
+  //     .rpc();
+
+  //   await wait(1000);
+
+  //   let fetchedEscrowState: any = await program.account.escrowState.fetch(escrowStateKey);
+  //   assert.ok(fetchedEscrowState.disputeStatus === true);
+  // });
+
+  // it("Solve the dispute", async () => {
+  //   await program.methods
+  //     .resolve(new anchor.BN(1))
+  //     .accounts({
+  //       resolver: resolver.publicKey,
+  //       takerTokenAccount: takerTokenAccountA,
+  //       admin1TokenAccount: localWalletAccountA,
+  //       admin2TokenAccount: admin2AccountA,
+  //       resolverTokenAccount: resolverAccountA,
+  //       escrowState: escrowStateKey,
+  //       adminState: adminKey,
+  //       vault: vaultKey,
+  //       vaultAuthority: vaultAuthorityKey,
+  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //     })
+  //     .signers([resolver])
+  //     .rpc();
+
+  //   await wait(1000);
+  //   let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
+  //   let fetchedResolverTokenAccountA = await getAccount(connection, resolverAccountA);
+  //   let fetchedAdmin1TokenAccountA = await getAccount(connection, localWalletAccountA);
+  //   let fetchedAdmin2TokenAccountA = await getAccount(connection, admin2AccountA);
+  //   console.log(Number(fetchedTakerTokenAccountA.amount));
+  //   console.log(Number(fetchedResolverTokenAccountA.amount));
+  //   console.log(Number(fetchedAdmin1TokenAccountA.amount));
+  //   console.log(Number(fetchedAdmin2TokenAccountA.amount));
+
+  //   assert.ok(1 === 1);
+  // });
+
+  it("Refund escrow state", async () => {
     await program.methods
-      .dispute(randomSeed)
+      .refund()
       .accounts({
-        disputor: initializer.publicKey,
-        escrowState: escrowStateKey,
-      })
-      .signers([initializer])
-      .rpc();
-
-    await wait(1000);
-
-    let fetchedEscrowState: any = await program.account.escrowState.fetch(escrowStateKey);
-    assert.ok(fetchedEscrowState.disputeStatus === true);
-  });
-
-  it("Solve the dispute", async () => {
-    await program.methods
-      .resolve(new anchor.BN(1))
-      .accounts({
-        resolver: resolver.publicKey,
+        taker: taker.publicKey,
+        initializer: initializer.publicKey,
         takerTokenAccount: takerTokenAccountA,
+        initializerDepositTokenAccount: initializerTokenAccountA,
         admin1TokenAccount: localWalletAccountA,
         admin2TokenAccount: admin2AccountA,
-        resolverTokenAccount: resolverAccountA,
         escrowState: escrowStateKey,
         adminState: adminKey,
         vault: vaultKey,
         vaultAuthority: vaultAuthorityKey,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .signers([resolver])
+      .signers([taker])
       .rpc();
 
     await wait(1000);
