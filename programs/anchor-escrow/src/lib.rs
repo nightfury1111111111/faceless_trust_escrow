@@ -28,6 +28,7 @@ pub mod anchor_escrow {
         ctx.accounts.escrow_state.random_seed = random_seed;
         ctx.accounts.escrow_state.admin1 = ctx.accounts.admin_state.admin1;
         ctx.accounts.escrow_state.admin2 = ctx.accounts.admin_state.admin2;
+        ctx.accounts.escrow_state.resolver = ctx.accounts.admin_state.resolver;
         ctx.accounts.escrow_state.dispute_status = false;
 
         let (vault_authority, _vault_authority_bump) =
@@ -108,6 +109,56 @@ pub mod anchor_escrow {
                 * ctx.accounts.admin_state.admin_fee
                 * 85
                 / 10000,
+        )?;
+
+        ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize] = 0;
+
+        Ok(())
+    }
+
+    pub fn resolve(ctx: Context<Resolve>, milestone_idx: u64) -> Result<()> {
+        let (_vault_authority, vault_authority_bump) =
+            Pubkey::find_program_address(&[AUTHORITY_SEED], ctx.program_id);
+        let authority_seeds = &[&AUTHORITY_SEED[..], &[vault_authority_bump]];
+
+        token::transfer(
+            ctx.accounts
+                .into_transfer_to_taker_context()
+                .with_signer(&[&authority_seeds[..]]),
+            ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize]
+                * (100
+                    - ctx.accounts.admin_state.admin_fee
+                    - ctx.accounts.admin_state.resolver_fee)
+                / 100,
+        )?;
+
+        token::transfer(
+            ctx.accounts
+                .into_transfer_to_admin1_context()
+                .with_signer(&[&authority_seeds[..]]),
+            ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize]
+                * ctx.accounts.admin_state.admin_fee
+                * 15
+                / 10000,
+        )?;
+
+        token::transfer(
+            ctx.accounts
+                .into_transfer_to_admin2_context()
+                .with_signer(&[&authority_seeds[..]]),
+            ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize]
+                * ctx.accounts.admin_state.admin_fee
+                * 85
+                / 10000,
+        )?;
+
+        token::transfer(
+            ctx.accounts
+                .into_transfer_to_resolver_context()
+                .with_signer(&[&authority_seeds[..]]),
+            ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize]
+                * ctx.accounts.admin_state.resolver_fee
+                / 100,
         )?;
 
         ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize] = 0;
@@ -329,6 +380,44 @@ pub struct Approve<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+#[instruction(milestone_idx:u64)]
+pub struct Resolve<'info> {
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub resolver: Signer<'info>,
+    #[account(mut)]
+    pub taker_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub admin1_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub admin2_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut, 
+        constraint = resolver_token_account.owner == *resolver.key
+    )]
+    pub resolver_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
+        constraint = escrow_state.taker == taker_token_account.owner || escrow_state.initializer_key == taker_token_account.owner,
+        constraint = escrow_state.resolver == *resolver.key,
+        constraint = escrow_state.initializer_amount[milestone_idx as usize] > 0,
+        constraint = escrow_state.dispute_status == true,
+    )]
+    pub escrow_state: Box<Account<'info, EscrowState>>,
+    #[account(
+        mut,
+        constraint = admin_state.admin1 == admin1_token_account.owner,
+        constraint = admin_state.admin2 == admin2_token_account.owner,
+    )]
+    pub admin_state: Box<Account<'info, AdminState>>,
+    #[account(mut)]
+    pub vault: Box<Account<'info, TokenAccount>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub vault_authority: AccountInfo<'info>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub token_program: Program<'info, Token>,
+}
+
 #[account]
 pub struct AdminState {
     admin_fee: u64,
@@ -425,6 +514,44 @@ impl<'info> Approve<'info> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
             to: self.admin2_token_account.to_account_info(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+}
+
+impl<'info> Resolve<'info> {
+    fn into_transfer_to_taker_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.taker_token_account.to_account_info(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+
+    fn into_transfer_to_admin1_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.admin1_token_account.to_account_info(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+
+    fn into_transfer_to_admin2_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.admin2_token_account.to_account_info(),
+            authority: self.vault_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+
+    fn into_transfer_to_resolver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.resolver_token_account.to_account_info(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)

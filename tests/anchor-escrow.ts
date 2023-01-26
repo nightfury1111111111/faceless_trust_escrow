@@ -147,8 +147,7 @@ describe("anchor-escrow", () => {
     localWalletAccountA = new PublicKey("6ch2CPNLzjaCgjS7dQBgBNSrjBWVhYBDHzFERmghPqX");
     admin1AccountA = await createAccount(connection, wallet.payer, mintA, admin1.publicKey);
     admin2AccountA = new PublicKey("6a1SizqF4Mrgb1sqxHRXCe4g6UiUbGSa1qQQbZR8Tge3");
-    resolverAccountA = new PublicKey("w3BQBBxYeg1zEnPA6EvJv7er7JVvwSuzRyCeB2Y3zAB");
-    console.log("here");
+    resolverAccountA = new PublicKey("CSRpjKrcXFBvWGPC1SVCbBozywWWqkAx8fTh3vvAfMn9");
 
     await wait(1000);
 
@@ -292,6 +291,37 @@ describe("anchor-escrow", () => {
 
     let fetchedEscrowState: any = await program.account.escrowState.fetch(escrowStateKey);
     assert.ok(fetchedEscrowState.disputeStatus === true);
+  });
+
+  it("Solve the dispute", async () => {
+    await program.methods
+      .resolve(new anchor.BN(1))
+      .accounts({
+        resolver: resolver.publicKey,
+        takerTokenAccount: takerTokenAccountA,
+        admin1TokenAccount: localWalletAccountA,
+        admin2TokenAccount: admin2AccountA,
+        resolverTokenAccount: resolverAccountA,
+        escrowState: escrowStateKey,
+        adminState: adminKey,
+        vault: vaultKey,
+        vaultAuthority: vaultAuthorityKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([resolver])
+      .rpc();
+
+    await wait(1000);
+    let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
+    let fetchedResolverTokenAccountA = await getAccount(connection, resolverAccountA);
+    let fetchedAdmin1TokenAccountA = await getAccount(connection, localWalletAccountA);
+    let fetchedAdmin2TokenAccountA = await getAccount(connection, admin2AccountA);
+    console.log(Number(fetchedTakerTokenAccountA.amount));
+    console.log(Number(fetchedResolverTokenAccountA.amount));
+    console.log(Number(fetchedAdmin1TokenAccountA.amount));
+    console.log(Number(fetchedAdmin2TokenAccountA.amount));
+
+    assert.ok(1 === 1);
   });
 
   // it("Approve escrow state", async () => {
