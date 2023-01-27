@@ -4,7 +4,7 @@ use anchor_spl::token::{
     TokenAccount, Transfer,
 };
 
-declare_id!("6GmDMEb2ETfCUmFDcmhHDpyeEy4AeMeA2unRowUrt3eo");
+declare_id!("YGRc71rdTfVaRNRczgDAU1rpcRaP4bH8qaGhHeuLshV");
 
 #[program]
 pub mod anchor_escrow {
@@ -18,18 +18,13 @@ pub mod anchor_escrow {
         initializer_amount: [u64; 5],
     ) -> Result<()> {
         ctx.accounts.escrow_state.initializer_key = *ctx.accounts.initializer.key;
-        ctx.accounts.escrow_state.initializer_deposit_token_account = *ctx
-            .accounts
-            .initializer_deposit_token_account
-            .to_account_info()
-            .key;
         ctx.accounts.escrow_state.taker = *ctx.accounts.taker.key;
         ctx.accounts.escrow_state.initializer_amount = initializer_amount;
         ctx.accounts.escrow_state.random_seed = random_seed;
-        ctx.accounts.escrow_state.admin1 = ctx.accounts.admin_state.admin1;
-        ctx.accounts.escrow_state.admin2 = ctx.accounts.admin_state.admin2;
-        ctx.accounts.escrow_state.resolver = ctx.accounts.admin_state.resolver;
+        ctx.accounts.escrow_state.mint = *ctx.accounts.mint.to_account_info().key;
         ctx.accounts.escrow_state.dispute_status = false;
+        ctx.accounts.escrow_state.bump = *ctx.bumps.get("escrow_state").unwrap();
+        ctx.accounts.escrow_state.vault_bump = *ctx.bumps.get("vault").unwrap();
 
         let (vault_authority, _vault_authority_bump) =
             Pubkey::find_program_address(&[AUTHORITY_SEED], ctx.program_id);
@@ -221,7 +216,7 @@ pub mod anchor_escrow {
         ctx.accounts.admin_state.admin1 = *ctx.accounts.admin1.key;
         ctx.accounts.admin_state.admin2 = *ctx.accounts.admin2.key;
         ctx.accounts.admin_state.resolver = *ctx.accounts.resolver.key;
-
+        ctx.accounts.admin_state.bump = *ctx.bumps.get("admin_state").unwrap();
         Ok(())
     }
 
@@ -240,7 +235,7 @@ pub mod anchor_escrow {
         Ok(())
     }
 
-    pub fn dispute(ctx: Context<Dispute>, _escrow_seed: u64) -> Result<()> {
+    pub fn dispute(ctx: Context<Dispute>) -> Result<()> {
         ctx.accounts.escrow_state.dispute_status = true;
 
         Ok(())
@@ -289,7 +284,9 @@ pub struct ChangeAdmin<'info> {
     pub new_resolver: AccountInfo<'info>,
     #[account(
         mut,
-        constraint = admin_state.admin1 == *admin1.key
+        constraint = admin_state.admin1 == *admin1.key,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump
     )]
     pub admin_state: Box<Account<'info, AdminState>>,
 }
@@ -303,7 +300,9 @@ pub struct SetFee<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(
         mut,
-        constraint = admin_state.admin1 == *admin1.key
+        constraint = admin_state.admin1 == *admin1.key,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump
     )]
     pub admin_state: Box<Account<'info, AdminState>>,
 }
@@ -317,7 +316,11 @@ pub struct Initialize<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub taker: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump
+    )]
     pub admin_state: Box<Account<'info, AdminState>>,
     #[account(mut)]
     pub mint: Account<'info, Mint>,
@@ -332,7 +335,8 @@ pub struct Initialize<'info> {
     pub vault: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = initializer_deposit_token_account.mint == *mint.to_account_info().key,
+        token::mint = mint,
+        token::authority = initializer,
         constraint = initializer_deposit_token_account.amount >=(initializer_amount[0]+initializer_amount[1]+initializer_amount[2]+initializer_amount[3]+initializer_amount[4])
     )]
     pub initializer_deposit_token_account: Account<'info, TokenAccount>,
@@ -352,7 +356,6 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(escrow_seed: u64)]
 pub struct Dispute<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
@@ -360,8 +363,9 @@ pub struct Dispute<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(
         mut,
-        constraint = escrow_state.random_seed == escrow_seed,
-        constraint = escrow_state.initializer_key == *disputor.to_account_info().key || escrow_state.taker == *disputor.to_account_info().key,
+        seeds = [b"state".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.bump,
+        constraint = escrow_state.initializer_key == *disputor.key || escrow_state.taker == *disputor.key,
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
 }
@@ -372,46 +376,70 @@ pub struct WithdrawForResolve<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub resolver: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"vault".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.vault_bump
+    )]
     pub vault: Account<'info, TokenAccount>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub vault_authority: AccountInfo<'info>,
-    #[account(mut, constraint = resolver_token_account.owner == *resolver.key)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = resolver,
+    )]
     pub resolver_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = escrow_state.admin1 == resolver_token_account.owner,
+        seeds = [b"state".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.bump,
         close = resolver
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
+    #[account(
+        mut,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump,
+        constraint = admin_state.admin1 == *resolver.key,
+    )]
+    pub admin_state: Box<Account<'info, AdminState>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
-#[instruction(milestone_idx:u64)]
+#[instruction(milestone_idx: u64)]
 pub struct Approve<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub initializer: Signer<'info>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    #[account(mut)]
-    pub taker: AccountInfo<'info>,
+    // /// CHECK: This is not dangerous because we don't read or write from this account
+    // #[account(mut)]
+    // pub taker: AccountInfo<'info>,
     #[account(
         mut,
-        constraint = taker_token_account.owner == *taker.key
+        token::mint = escrow_state.mint,
+        token::authority = escrow_state.taker,
     )]
     pub taker_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub initializer_deposit_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = admin_state.admin1,
+    )]
     pub admin1_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = admin_state.admin2,
+    )]
     pub admin2_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
-        constraint = escrow_state.initializer_deposit_token_account == *initializer_deposit_token_account.to_account_info().key,
-        constraint = escrow_state.taker == *taker.key,
+        seeds = [b"state".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.bump,
+        constraint = escrow_state.taker == taker_token_account.owner,
         constraint = escrow_state.initializer_key == *initializer.key,
         constraint = escrow_state.initializer_amount[milestone_idx as usize] > 0,
         constraint = escrow_state.dispute_status == false,
@@ -419,11 +447,17 @@ pub struct Approve<'info> {
     pub escrow_state: Box<Account<'info, EscrowState>>,
     #[account(
         mut,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump,
         constraint = admin_state.admin1 == admin1_token_account.owner,
         constraint = admin_state.admin2 == admin2_token_account.owner,
     )]
     pub admin_state: Box<Account<'info, AdminState>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"vault".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.vault_bump
+    )]
     pub vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub vault_authority: AccountInfo<'info>,
@@ -436,35 +470,46 @@ pub struct Refund<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub taker: Signer<'info>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    #[account(mut)]
-    pub initializer: AccountInfo<'info>,
     #[account(
         mut,
-        constraint = taker_token_account.owner == *taker.key
+        token::mint = escrow_state.mint,
+        token::authority = escrow_state.initializer_key,
     )]
-    pub taker_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
     pub initializer_deposit_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = admin_state.admin1,
+    )]
     pub admin1_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = admin_state.admin2,
+    )]
     pub admin2_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
-        constraint = escrow_state.initializer_deposit_token_account == *initializer_deposit_token_account.to_account_info().key,
+        seeds = [b"state".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.bump,
+        constraint = escrow_state.initializer_key == initializer_deposit_token_account.owner,
         constraint = escrow_state.taker == *taker.key,
-        constraint = escrow_state.initializer_key == *initializer.key,
         constraint = escrow_state.dispute_status == false,
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
     #[account(
         mut,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump,
         constraint = admin_state.admin1 == admin1_token_account.owner,
         constraint = admin_state.admin2 == admin2_token_account.owner,
     )]
     pub admin_state: Box<Account<'info, AdminState>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"vault".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.vault_bump
+    )]
     pub vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub vault_authority: AccountInfo<'info>,
@@ -473,36 +518,57 @@ pub struct Refund<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(milestone_idx:u64)]
+#[instruction(milestone_idx: u64)]
 pub struct Resolve<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub resolver: Signer<'info>,
-    #[account(mut)]
-    pub taker_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+    )]
+    pub taker_token_account: Box<Account<'info, TokenAccount>>, // taker can be client or receiver in escrow - here
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = admin_state.admin1,
+    )]
     pub admin1_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = admin_state.admin2,
+    )]
     pub admin2_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut, 
-        constraint = resolver_token_account.owner == *resolver.key
+    #[account(
+        mut,
+        token::mint = escrow_state.mint,
+        token::authority = resolver,
     )]
     pub resolver_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
+        seeds = [b"state".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.bump,
         constraint = escrow_state.taker == taker_token_account.owner || escrow_state.initializer_key == taker_token_account.owner,
-        constraint = escrow_state.resolver == *resolver.key,
         constraint = escrow_state.initializer_amount[milestone_idx as usize] > 0,
         constraint = escrow_state.dispute_status == true,
     )]
     pub escrow_state: Box<Account<'info, EscrowState>>,
     #[account(
         mut,
+        seeds = [b"state".as_ref(), b"admin".as_ref()],
+        bump = admin_state.bump,
         constraint = admin_state.admin1 == admin1_token_account.owner,
         constraint = admin_state.admin2 == admin2_token_account.owner,
+        constraint = admin_state.resolver == resolver_token_account.owner,
     )]
     pub admin_state: Box<Account<'info, AdminState>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"vault".as_ref(), &escrow_state.random_seed.to_le_bytes()],
+        bump = escrow_state.vault_bump
+    )]
     pub vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub vault_authority: AccountInfo<'info>,
@@ -512,8 +578,9 @@ pub struct Resolve<'info> {
 
 #[account]
 pub struct AdminState {
-    admin_fee: u64,
-    resolver_fee: u64,
+    pub bump: u8,
+    pub admin_fee: u64,
+    pub resolver_fee: u64,
     pub admin1: Pubkey,
     pub admin2: Pubkey,
     pub resolver: Pubkey,
@@ -521,7 +588,7 @@ pub struct AdminState {
 
 impl AdminState {
     pub fn space() -> usize {
-        8 + 112
+        8 + 113
     }
 }
 
@@ -529,18 +596,17 @@ impl AdminState {
 pub struct EscrowState {
     pub random_seed: u64,
     pub initializer_key: Pubkey,
-    pub initializer_deposit_token_account: Pubkey,
     pub taker: Pubkey,
     pub initializer_amount: [u64; 5],
-    pub admin1: Pubkey,
-    pub admin2: Pubkey,
-    pub resolver: Pubkey,
     pub dispute_status: bool,
+    pub mint: Pubkey,
+    pub bump: u8,
+    pub vault_bump: u8,
 }
 
 impl EscrowState {
     pub fn space() -> usize {
-        8 + 241
+        8 + 147
     }
 }
 
@@ -613,10 +679,12 @@ impl<'info> Approve<'info> {
 }
 
 impl<'info> Refund<'info> {
-    fn into_transfer_to_initializer_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn into_transfer_to_initializer_context(
+        &self,
+    ) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
-            to: self.taker_token_account.to_account_info(),
+            to: self.initializer_deposit_token_account.to_account_info(),
             authority: self.vault_authority.clone(),
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)

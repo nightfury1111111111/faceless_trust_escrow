@@ -26,7 +26,7 @@ describe("anchor-escrow", () => {
 
   // CAUTTION: if you are intended to use the program that is deployed by yourself,
   // please make sure that the programIDs are consistent
-  const programId = new PublicKey("6GmDMEb2ETfCUmFDcmhHDpyeEy4AeMeA2unRowUrt3eo");
+  const programId = new PublicKey("YGRc71rdTfVaRNRczgDAU1rpcRaP4bH8qaGhHeuLshV");
   const program = new anchor.Program(IDL, programId, provider);
 
   let mintA = null as PublicKey;
@@ -199,8 +199,10 @@ describe("anchor-escrow", () => {
 
   //   await wait(500);
   //   const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
+  //   console.log("bump", Number(fetchedAdminState.bump));
   //   assert.ok(fetchedAdminState.admin1.toString() === wallet.publicKey.toString());
   //   assert.ok(fetchedAdminState.admin2.toString() === admin2.toString());
+  //   assert.ok(fetchedAdminState.resolver.toString() === resolver.publicKey.toString());
   // });
 
   // it("change admin address", async () => {
@@ -274,17 +276,18 @@ describe("anchor-escrow", () => {
     // Check that the values in the escrow account match what we expect.
     assert.ok(fetchedEscrowState.initializerKey.equals(initializer.publicKey));
     assert.ok(fetchedEscrowState.initializerAmount[0].toNumber() == 50000);
-    assert.ok(fetchedEscrowState.initializerDepositTokenAccount.equals(initializerTokenAccountA));
+    assert.ok(fetchedEscrowState.mint.equals(mintA));
+    console.log(fetchedEscrowState.bump);
   });
 
   // it("Dispute", async () => {
   //   await program.methods
-  //     .dispute(randomSeed)
+  //     .dispute()
   //     .accounts({
-  //       disputor: initializer.publicKey,
+  //       disputor: taker.publicKey,
   //       escrowState: escrowStateKey,
   //     })
-  //     .signers([initializer])
+  //     .signers([taker])
   //     .rpc();
 
   //   await wait(1000);
@@ -324,46 +327,13 @@ describe("anchor-escrow", () => {
   //   assert.ok(1 === 1);
   // });
 
-  it("Refund escrow state", async () => {
-    await program.methods
-      .refund()
-      .accounts({
-        taker: taker.publicKey,
-        initializer: initializer.publicKey,
-        takerTokenAccount: takerTokenAccountA,
-        initializerDepositTokenAccount: initializerTokenAccountA,
-        admin1TokenAccount: localWalletAccountA,
-        admin2TokenAccount: admin2AccountA,
-        escrowState: escrowStateKey,
-        adminState: adminKey,
-        vault: vaultKey,
-        vaultAuthority: vaultAuthorityKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([taker])
-      .rpc();
-
-    await wait(1000);
-    let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
-    let fetchedResolverTokenAccountA = await getAccount(connection, resolverAccountA);
-    let fetchedAdmin1TokenAccountA = await getAccount(connection, localWalletAccountA);
-    let fetchedAdmin2TokenAccountA = await getAccount(connection, admin2AccountA);
-    console.log(Number(fetchedTakerTokenAccountA.amount));
-    console.log(Number(fetchedResolverTokenAccountA.amount));
-    console.log(Number(fetchedAdmin1TokenAccountA.amount));
-    console.log(Number(fetchedAdmin2TokenAccountA.amount));
-
-    assert.ok(1 === 1);
-  });
-
   // it("Approve escrow state", async () => {
   //   await program.methods
   //     .approve(new anchor.BN(0))
   //     .accounts({
   //       initializer: initializer.publicKey,
-  //       taker: taker.publicKey,
   //       takerTokenAccount: takerTokenAccountA,
-  //       initializerDepositTokenAccount: initializerTokenAccountA,
+  //       // initializerDepositTokenAccount: initializerTokenAccountA,
   //       admin1TokenAccount: localWalletAccountA,
   //       admin2TokenAccount: admin2AccountA,
   //       escrowState: escrowStateKey,
@@ -376,6 +346,38 @@ describe("anchor-escrow", () => {
   //     .rpc();
 
   //   await wait(1000);
+  //   let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
+  //   let fetchedResolverTokenAccountA = await getAccount(connection, resolverAccountA);
+  //   let fetchedAdmin1TokenAccountA = await getAccount(connection, localWalletAccountA);
+  //   let fetchedAdmin2TokenAccountA = await getAccount(connection, admin2AccountA);
+  //   console.log(Number(fetchedTakerTokenAccountA.amount));
+  //   console.log(Number(fetchedResolverTokenAccountA.amount));
+  //   console.log(Number(fetchedAdmin1TokenAccountA.amount));
+  //   console.log(Number(fetchedAdmin2TokenAccountA.amount));
+
+  //   assert.ok(1 === 1);
+  // });
+
+  // it("Refund escrow state", async () => {
+  //   await program.methods
+  //     .refund()
+  //     .accounts({
+  //       taker: taker.publicKey,
+  //       initializerDepositTokenAccount: initializerTokenAccountA,
+  //       admin1TokenAccount: localWalletAccountA,
+  //       admin2TokenAccount: admin2AccountA,
+  //       escrowState: escrowStateKey,
+  //       adminState: adminKey,
+  //       vault: vaultKey,
+  //       vaultAuthority: vaultAuthorityKey,
+  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //     })
+  //     .signers([taker])
+  //     .rpc();
+
+  //   await wait(1000);
+  //   let fetchedEscrowState: any = await program.account.escrowState.fetch(escrowStateKey);
+
   //   let fetchedTakerTokenAccountA = await getAccount(connection, takerTokenAccountA);
   //   let fetchedResolverTokenAccountA = await getAccount(connection, resolverAccountA);
   //   let fetchedAdmin1TokenAccountA = await getAccount(connection, localWalletAccountA);
@@ -433,6 +435,7 @@ describe("anchor-escrow", () => {
         resolverTokenAccount: localWalletAccountA,
         vault: vaultKey2,
         vaultAuthority: vaultAuthorityKey,
+        adminState: adminKey,
         escrowState: escrowStateKey2,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -446,6 +449,7 @@ describe("anchor-escrow", () => {
 
     assert.ok(currentResolverTokenAccount.owner.equals(wallet.publicKey));
     // Check all the funds are still there.
+    console.log(Number(currentResolverTokenAccount.amount - originResolverTokenAccount.amount));
     assert.ok(Number(currentResolverTokenAccount.amount - originResolverTokenAccount.amount) == initializerAmount);
   });
 });

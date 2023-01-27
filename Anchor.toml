@@ -1,5 +1,5 @@
 [programs.localnet]
-anchor_escrow = "6GmDMEb2ETfCUmFDcmhHDpyeEy4AeMeA2unRowUrt3eo"
+anchor_escrow = "YGRc71rdTfVaRNRczgDAU1rpcRaP4bH8qaGhHeuLshV"
 
 [registry]
 url ="http://127.0.0.1:8899"
