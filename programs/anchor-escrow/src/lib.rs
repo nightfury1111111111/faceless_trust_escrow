@@ -4,7 +4,7 @@ use anchor_spl::token::{
     TokenAccount, Transfer,
 };
 
-declare_id!("5pCGsYLtLyWT7BzbJgPuqjU7pcq1YeWBwfNzKhHM8wpJ");
+declare_id!("D2Z2nRfzcEdMuHcKfZsHfQGYMGZWLPjFELFwcHXtDLf6");
 
 #[program]
 pub mod anchor_escrow {
