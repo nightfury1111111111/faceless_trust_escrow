@@ -60,4 +60,22 @@ describe("anchor-escrow", () => {
   //   assert.ok(fetchedAdminState.admin2.toString() === "BddjKVEuSUbmAv7cyXKyzBUQDUHshwihWmkoqwXmpwvi");
   //   assert.ok(fetchedAdminState.resolver.toString() === "4b2mrvjxPjwzASUXYDNVhuy8bbp5jVZC2TJms1veYRJf");
   // });
+
+  it("set fee", async () => {
+    const adminfee = 5;
+    const resolverfee = 1;
+    await program.methods
+      .setFee(new anchor.BN(adminfee), new anchor.BN(resolverfee))
+      .accounts({
+        admin1: wallet.publicKey.toString(),
+        adminState: adminKey.toString(),
+      })
+      .signers([wallet.payer])
+      .rpc();
+
+    await wait(500);
+    const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
+    assert.ok(fetchedAdminState.adminFee.toNumber() === adminfee);
+    assert.ok(fetchedAdminState.resolverFee.toNumber() === resolverfee);
+  });
 });
