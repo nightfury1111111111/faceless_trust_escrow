@@ -9,7 +9,9 @@
   "scripts": {
     "build": "anchor build",
     "deploy": "anchor deploy",
-    "test": "anchor test --skip-build --skip-deploy"
+    "test": "anchor test --skip-build --skip-deploy",
+    "resolve": "yarn run ts-mocha -t 1000000 resolve/index.ts",
+    "initialize": "yarn run ts-mocha -t 1000000 deploy/index.ts"
   },
   "repository": {
     "type": "git",
