@@ -191,7 +191,7 @@ pub mod anchor_escrow {
             + ctx.accounts.escrow_state.initializer_amount[4]
             == 0
         {
-            ctx.accounts.admin_state.active_escorw = ctx.accounts.admin_state.active_escorw + 1;
+            ctx.accounts.admin_state.active_escorw = ctx.accounts.admin_state.active_escorw - 1;
             ctx.accounts.admin_state.completed_escorw =
                 ctx.accounts.admin_state.completed_escorw + 1;
         }
@@ -245,6 +245,18 @@ pub mod anchor_escrow {
                 * ctx.accounts.admin_state.resolver_fee
                 / 100,
         )?;
+
+        if ctx.accounts.escrow_state.initializer_amount[0]
+            + ctx.accounts.escrow_state.initializer_amount[1]
+            + ctx.accounts.escrow_state.initializer_amount[2]
+            + ctx.accounts.escrow_state.initializer_amount[3]
+            + ctx.accounts.escrow_state.initializer_amount[4]
+            == 0
+        {
+            ctx.accounts.admin_state.active_escorw = ctx.accounts.admin_state.active_escorw - 1;
+            ctx.accounts.admin_state.completed_escorw =
+                ctx.accounts.admin_state.completed_escorw + 1;
+        }
 
         ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize] = 0;
 
