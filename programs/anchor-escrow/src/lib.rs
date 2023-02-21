@@ -4,7 +4,7 @@ use anchor_spl::token::{
     TokenAccount, Transfer,
 };
 
-declare_id!("4NVK3ABAU9tyF4eENdN7ZE9fTZH1dmLaEhknt5mgtYuE");
+declare_id!("FFeF95f36kdrrS1J4o19w4kQDLkxyDopjAveyEAUqzmy");
 
 #[program]
 pub mod anchor_escrow {
@@ -23,8 +23,22 @@ pub mod anchor_escrow {
         ctx.accounts.escrow_state.random_seed = random_seed;
         ctx.accounts.escrow_state.mint = *ctx.accounts.mint.to_account_info().key;
         ctx.accounts.escrow_state.dispute_status = false;
+        ctx.accounts.escrow_state.refund_status = false;
         ctx.accounts.escrow_state.bump = *ctx.bumps.get("escrow_state").unwrap();
         ctx.accounts.escrow_state.vault_bump = *ctx.bumps.get("vault").unwrap();
+        ctx.accounts.admin_state.total_amount = ctx.accounts.admin_state.total_amount
+            + initializer_amount[0]
+            + initializer_amount[1]
+            + initializer_amount[2]
+            + initializer_amount[3]
+            + initializer_amount[4];
+        ctx.accounts.admin_state.locked_amount = ctx.accounts.admin_state.locked_amount
+            + initializer_amount[0]
+            + initializer_amount[1]
+            + initializer_amount[2]
+            + initializer_amount[3]
+            + initializer_amount[4];
+        ctx.accounts.admin_state.active_escorw = ctx.accounts.admin_state.active_escorw + 1;
 
         let (vault_authority, _vault_authority_bump) =
             Pubkey::find_program_address(&[AUTHORITY_SEED], ctx.program_id);
@@ -118,7 +132,17 @@ pub mod anchor_escrow {
                 / 10000,
         )?;
 
+        ctx.accounts.admin_state.locked_amount = ctx.accounts.admin_state.locked_amount
+            - ctx.accounts.escrow_state.initializer_amount[0]
+            - ctx.accounts.escrow_state.initializer_amount[1]
+            - ctx.accounts.escrow_state.initializer_amount[2]
+            - ctx.accounts.escrow_state.initializer_amount[3]
+            - ctx.accounts.escrow_state.initializer_amount[4];
+        ctx.accounts.admin_state.refunded_escorw = ctx.accounts.admin_state.refunded_escorw + 1;
+        ctx.accounts.admin_state.active_escorw = ctx.accounts.admin_state.active_escorw - 1;
+        ctx.accounts.admin_state.completed_escorw = ctx.accounts.admin_state.completed_escorw + 1;
         ctx.accounts.escrow_state.initializer_amount = [0, 0, 0, 0, 0];
+        ctx.accounts.escrow_state.refund_status = true;
 
         Ok(())
     }
@@ -156,6 +180,21 @@ pub mod anchor_escrow {
                 * 85
                 / 10000,
         )?;
+
+        ctx.accounts.admin_state.locked_amount = ctx.accounts.admin_state.locked_amount
+            - ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize];
+
+        if ctx.accounts.escrow_state.initializer_amount[0]
+            + ctx.accounts.escrow_state.initializer_amount[1]
+            + ctx.accounts.escrow_state.initializer_amount[2]
+            + ctx.accounts.escrow_state.initializer_amount[3]
+            + ctx.accounts.escrow_state.initializer_amount[4]
+            == 0
+        {
+            ctx.accounts.admin_state.active_escorw = ctx.accounts.admin_state.active_escorw + 1;
+            ctx.accounts.admin_state.completed_escorw =
+                ctx.accounts.admin_state.completed_escorw + 1;
+        }
 
         ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize] = 0;
 
@@ -217,6 +256,14 @@ pub mod anchor_escrow {
         ctx.accounts.admin_state.admin2 = *ctx.accounts.admin2.key;
         ctx.accounts.admin_state.resolver = *ctx.accounts.resolver.key;
         ctx.accounts.admin_state.bump = *ctx.bumps.get("admin_state").unwrap();
+        ctx.accounts.admin_state.resolver_fee = 0;
+        ctx.accounts.admin_state.admin_fee = 0;
+        ctx.accounts.admin_state.total_amount = 0;
+        ctx.accounts.admin_state.locked_amount = 0;
+        ctx.accounts.admin_state.active_escorw = 0;
+        ctx.accounts.admin_state.completed_escorw = 0;
+        ctx.accounts.admin_state.disputed_escorw = 0;
+        ctx.accounts.admin_state.refunded_escorw = 0;
         Ok(())
     }
 
@@ -584,11 +631,17 @@ pub struct AdminState {
     pub admin1: Pubkey,
     pub admin2: Pubkey,
     pub resolver: Pubkey,
+    pub total_amount: u64,
+    pub locked_amount: u64,
+    pub active_escorw: u64,
+    pub completed_escorw: u64,
+    pub disputed_escorw: u64,
+    pub refunded_escorw: u64,
 }
 
 impl AdminState {
     pub fn space() -> usize {
-        8 + 113
+        8 + 161
     }
 }
 
@@ -599,6 +652,7 @@ pub struct EscrowState {
     pub taker: Pubkey,
     pub initializer_amount: [u64; 5],
     pub dispute_status: bool,
+    pub refund_status: bool,
     pub mint: Pubkey,
     pub bump: u8,
     pub vault_bump: u8,

@@ -1,11 +1,11 @@
 [programs.localnet]
-anchor_escrow = "4NVK3ABAU9tyF4eENdN7ZE9fTZH1dmLaEhknt5mgtYuE"
+anchor_escrow = "FFeF95f36kdrrS1J4o19w4kQDLkxyDopjAveyEAUqzmy"
 
 [registry]
 url ="http://127.0.0.1:8899"
 
 [provider]
-cluster = "mainnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
