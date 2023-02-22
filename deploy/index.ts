@@ -26,7 +26,7 @@ describe("anchor-escrow", () => {
 
   // CAUTTION: if you are intended to use the program that is deployed by yourself,
   // please make sure that the programIDs are consistent
-  const programId = new PublicKey("6uTv8WneofYnJYnBC8we7kbgSfqT3eoU87DFYFxduMFi");
+  const programId = new PublicKey("Ha9BXm9aGDU3Vyv3D2nvF2cMM2vMo1RqUiyEeL67smpP");
   const program = new anchor.Program(IDL, programId, provider);
 
   // Determined Seeds
@@ -38,44 +38,44 @@ describe("anchor-escrow", () => {
     program.programId
   )[0];
 
-  // it("init admin address", async () => {
-  //   await program.methods
-  //     .initAdmin()
-  //     .accounts({
-  //       admin1: wallet.publicKey.toString(),
-  //       admin2: new PublicKey("BddjKVEuSUbmAv7cyXKyzBUQDUHshwihWmkoqwXmpwvi"),
-  //       resolver: new PublicKey("4b2mrvjxPjwzASUXYDNVhuy8bbp5jVZC2TJms1veYRJf"),
-  //       adminState: adminKey.toString(),
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
-  //     })
-  //     .signers([wallet.payer])
-  //     .rpc();
-
-  //   await wait(500);
-  //   const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
-  //   console.log("bump", Number(fetchedAdminState.bump));
-  //   assert.ok(fetchedAdminState.admin1.toString() === wallet.publicKey.toString());
-  //   assert.ok(fetchedAdminState.admin2.toString() === "BddjKVEuSUbmAv7cyXKyzBUQDUHshwihWmkoqwXmpwvi");
-  //   assert.ok(fetchedAdminState.resolver.toString() === "4b2mrvjxPjwzASUXYDNVhuy8bbp5jVZC2TJms1veYRJf");
-  // });
-
-  it("set fee", async () => {
-    const adminfee = 5;
-    const resolverfee = 1;
+  it("init admin address", async () => {
     await program.methods
-      .setFee(new anchor.BN(adminfee), new anchor.BN(resolverfee))
+      .initAdmin()
       .accounts({
         admin1: wallet.publicKey.toString(),
+        admin2: new PublicKey("BddjKVEuSUbmAv7cyXKyzBUQDUHshwihWmkoqwXmpwvi"),
+        resolver: new PublicKey("4b2mrvjxPjwzASUXYDNVhuy8bbp5jVZC2TJms1veYRJf"),
         adminState: adminKey.toString(),
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([wallet.payer])
       .rpc();
 
     await wait(500);
     const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
-    assert.ok(fetchedAdminState.adminFee.toNumber() === adminfee);
-    assert.ok(fetchedAdminState.resolverFee.toNumber() === resolverfee);
+    console.log("bump", Number(fetchedAdminState.bump));
+    assert.ok(fetchedAdminState.admin1.toString() === wallet.publicKey.toString());
+    assert.ok(fetchedAdminState.admin2.toString() === "BddjKVEuSUbmAv7cyXKyzBUQDUHshwihWmkoqwXmpwvi");
+    assert.ok(fetchedAdminState.resolver.toString() === "4b2mrvjxPjwzASUXYDNVhuy8bbp5jVZC2TJms1veYRJf");
   });
+
+  // it("set fee", async () => {
+  //   const adminfee = 5;
+  //   const resolverfee = 1;
+  //   await program.methods
+  //     .setFee(new anchor.BN(adminfee), new anchor.BN(resolverfee))
+  //     .accounts({
+  //       admin1: wallet.publicKey.toString(),
+  //       adminState: adminKey.toString(),
+  //     })
+  //     .signers([wallet.payer])
+  //     .rpc();
+
+  //   await wait(500);
+  //   const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
+  //   assert.ok(fetchedAdminState.adminFee.toNumber() === adminfee);
+  //   assert.ok(fetchedAdminState.resolverFee.toNumber() === resolverfee);
+  // });
 });
