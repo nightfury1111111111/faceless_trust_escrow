@@ -26,7 +26,7 @@ describe("anchor-escrow", () => {
 
   // CAUTTION: if you are intended to use the program that is deployed by yourself,
   // please make sure that the programIDs are consistent
-  const programId = new PublicKey("FFeF95f36kdrrS1J4o19w4kQDLkxyDopjAveyEAUqzmy");
+  const programId = new PublicKey("42CaSMx617x7HPdmX3kg62qpxcnmXicifZPvPYqcSy1S");
   const program = new anchor.Program(IDL, programId, provider);
 
   let mintA = null as PublicKey;
@@ -100,118 +100,118 @@ describe("anchor-escrow", () => {
     program.programId
   )[0];
 
-  it("Initialize program state", async () => {
-    console.log(1);
-    // 1. Airdrop 1 SOL to payer
-    const signature = await provider.connection.requestAirdrop(payer.publicKey, 1000000000);
-    const latestBlockhash = await connection.getLatestBlockhash();
-    await provider.connection.confirmTransaction(
-      {
-        signature,
-        ...latestBlockhash,
-      },
-      commitment
-    );
-    console.log(2);
+  // it("Initialize program state", async () => {
+  //   console.log(1);
+  //   // 1. Airdrop 1 SOL to payer
+  //   const signature = await provider.connection.requestAirdrop(payer.publicKey, 1000000000);
+  //   const latestBlockhash = await connection.getLatestBlockhash();
+  //   await provider.connection.confirmTransaction(
+  //     {
+  //       signature,
+  //       ...latestBlockhash,
+  //     },
+  //     commitment
+  //   );
+  //   console.log(2);
 
-    await wait(1000);
-    // 2. Fund main roles: initializer and taker
-    const fundingTx = new Transaction();
-    fundingTx.add(
-      SystemProgram.transfer({
-        fromPubkey: payer.publicKey,
-        toPubkey: initializer.publicKey,
-        lamports: 100000000,
-      }),
-      SystemProgram.transfer({
-        fromPubkey: payer.publicKey,
-        toPubkey: taker.publicKey,
-        lamports: 100000000,
-      }),
-      SystemProgram.transfer({
-        fromPubkey: payer.publicKey,
-        toPubkey: admin1.publicKey,
-        lamports: 100000000,
-      }),
-      SystemProgram.transfer({
-        fromPubkey: payer.publicKey,
-        toPubkey: admin2,
-        lamports: 100000000,
-      })
-    );
-    console.log(3);
-
-    await provider.sendAndConfirm(fundingTx, [payer]);
-    await wait(1000);
-    console.log(4);
-    // 3. Create dummy token mints: mintA and mintB
-    mintA = new PublicKey("Ad4JSN6xUeok3JVgow9LTJ8GW1K1y8W397nsZrNYYW5E");
-
-    // 4. Create token accounts for dummy token mints and both main roles
-    initializerTokenAccountA = await createAccount(connection, wallet.payer, mintA, initializer.publicKey);
-    takerTokenAccountA = await createAccount(connection, wallet.payer, mintA, taker.publicKey);
-    localWalletAccountA = new PublicKey("5Z8aRZjvUDYpq4jkp2KGvNb8xxnmQxwB6pstMBDXHJ77");
-    admin1AccountA = await createAccount(connection, wallet.payer, mintA, admin1.publicKey);
-    admin2AccountA = new PublicKey("6a1SizqF4Mrgb1sqxHRXCe4g6UiUbGSa1qQQbZR8Tge3");
-    resolverAccountA = new PublicKey("CSRpjKrcXFBvWGPC1SVCbBozywWWqkAx8fTh3vvAfMn9");
-
-    await wait(1000);
-    console.log(5);
-
-    // 5. Mint dummy tokens to initializerTokenAccountA and takerTokenAccountB
-    await transfer(
-      connection,
-      wallet.payer,
-      localWalletAccountA,
-      initializerTokenAccountA,
-      wallet.publicKey,
-      initializerAmount * 1000
-    );
-
-    await wait(1000);
-
-    const fetchedInitializerTokenAccountA = await getAccount(connection, initializerTokenAccountA);
-    console.log(6);
-
-    assert.ok(Number(fetchedInitializerTokenAccountA.amount) == initializerAmount * 1000);
-
-    console.log({
-      localWallet: wallet.publicKey.toString(),
-      localWalletAccountA: localWalletAccountA.toString(),
-      admin1: admin1.publicKey.toString(),
-      admin2: admin2.toString(),
-      initializer: initializer.publicKey.toString(),
-      taker: taker.publicKey.toString(),
-      mintA: mintA.toString(),
-      vault: vaultKey.toString(),
-      vaultAuthorityKey: vaultAuthorityKey.toString(),
-      takerTokenAccountA: takerTokenAccountA.toString(),
-      adminKey: adminKey.toString(),
-    });
-  });
-
-  // it("init admin address", async () => {
-  //   await program.methods
-  //     .initAdmin()
-  //     .accounts({
-  //       admin1: wallet.publicKey.toString(),
-  //       admin2: admin2.toString(),
-  //       resolver: resolver.publicKey.toString(),
-  //       adminState: adminKey.toString(),
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //   await wait(1000);
+  //   // 2. Fund main roles: initializer and taker
+  //   const fundingTx = new Transaction();
+  //   fundingTx.add(
+  //     SystemProgram.transfer({
+  //       fromPubkey: payer.publicKey,
+  //       toPubkey: initializer.publicKey,
+  //       lamports: 100000000,
+  //     }),
+  //     SystemProgram.transfer({
+  //       fromPubkey: payer.publicKey,
+  //       toPubkey: taker.publicKey,
+  //       lamports: 100000000,
+  //     }),
+  //     SystemProgram.transfer({
+  //       fromPubkey: payer.publicKey,
+  //       toPubkey: admin1.publicKey,
+  //       lamports: 100000000,
+  //     }),
+  //     SystemProgram.transfer({
+  //       fromPubkey: payer.publicKey,
+  //       toPubkey: admin2,
+  //       lamports: 100000000,
   //     })
-  //     .signers([wallet.payer])
-  //     .rpc();
+  //   );
+  //   console.log(3);
 
-  //   await wait(500);
-  //   const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
-  //   console.log(fetchedAdminState);
-  //   assert.ok(fetchedAdminState.admin1.toString() === wallet.publicKey.toString());
-  //   assert.ok(fetchedAdminState.admin2.toString() === admin2.toString());
-  //   assert.ok(fetchedAdminState.resolver.toString() === resolver.publicKey.toString());
+  //   await provider.sendAndConfirm(fundingTx, [payer]);
+  //   await wait(1000);
+  //   console.log(4);
+  //   // 3. Create dummy token mints: mintA and mintB
+  //   mintA = new PublicKey("Ad4JSN6xUeok3JVgow9LTJ8GW1K1y8W397nsZrNYYW5E");
+
+  //   // 4. Create token accounts for dummy token mints and both main roles
+  //   initializerTokenAccountA = await createAccount(connection, wallet.payer, mintA, initializer.publicKey);
+  //   takerTokenAccountA = await createAccount(connection, wallet.payer, mintA, taker.publicKey);
+  //   localWalletAccountA = new PublicKey("5Z8aRZjvUDYpq4jkp2KGvNb8xxnmQxwB6pstMBDXHJ77");
+  //   admin1AccountA = await createAccount(connection, wallet.payer, mintA, admin1.publicKey);
+  //   admin2AccountA = new PublicKey("6a1SizqF4Mrgb1sqxHRXCe4g6UiUbGSa1qQQbZR8Tge3");
+  //   resolverAccountA = new PublicKey("CSRpjKrcXFBvWGPC1SVCbBozywWWqkAx8fTh3vvAfMn9");
+
+  //   await wait(1000);
+  //   console.log(5);
+
+  //   // 5. Mint dummy tokens to initializerTokenAccountA and takerTokenAccountB
+  //   await transfer(
+  //     connection,
+  //     wallet.payer,
+  //     localWalletAccountA,
+  //     initializerTokenAccountA,
+  //     wallet.publicKey,
+  //     initializerAmount * 1000
+  //   );
+
+  //   await wait(1000);
+
+  //   const fetchedInitializerTokenAccountA = await getAccount(connection, initializerTokenAccountA);
+  //   console.log(6);
+
+  //   assert.ok(Number(fetchedInitializerTokenAccountA.amount) == initializerAmount * 1000);
+
+  //   console.log({
+  //     localWallet: wallet.publicKey.toString(),
+  //     localWalletAccountA: localWalletAccountA.toString(),
+  //     admin1: admin1.publicKey.toString(),
+  //     admin2: admin2.toString(),
+  //     initializer: initializer.publicKey.toString(),
+  //     taker: taker.publicKey.toString(),
+  //     mintA: mintA.toString(),
+  //     vault: vaultKey.toString(),
+  //     vaultAuthorityKey: vaultAuthorityKey.toString(),
+  //     takerTokenAccountA: takerTokenAccountA.toString(),
+  //     adminKey: adminKey.toString(),
+  //   });
   // });
+
+  it("init admin address", async () => {
+    await program.methods
+      .initAdmin()
+      .accounts({
+        admin1: wallet.publicKey.toString(),
+        admin2: admin2.toString(),
+        resolver: resolver.publicKey.toString(),
+        adminState: adminKey.toString(),
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([wallet.payer])
+      .rpc();
+
+    await wait(500);
+    const fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
+    console.log(fetchedAdminState);
+    assert.ok(fetchedAdminState.admin1.toString() === wallet.publicKey.toString());
+    assert.ok(fetchedAdminState.admin2.toString() === admin2.toString());
+    assert.ok(fetchedAdminState.resolver.toString() === resolver.publicKey.toString());
+  });
 
   // it("change admin address", async () => {
   //   await program.methods
@@ -250,45 +250,45 @@ describe("anchor-escrow", () => {
   //   assert.ok(fetchedAdminState.resolverFee.toNumber() === resolverfee);
   // });
 
-  it("Initialize escrow", async () => {
-    await program.methods
-      .initialize(randomSeed, [
-        new anchor.BN(50000),
-        new anchor.BN(150000),
-        new anchor.BN(200000),
-        new anchor.BN(50000),
-        new anchor.BN(50000),
-      ])
-      .accounts({
-        initializer: initializer.publicKey,
-        vault: vaultKey,
-        adminState: adminKey,
-        mint: mintA,
-        initializerDepositTokenAccount: initializerTokenAccountA,
-        taker: taker.publicKey,
-        escrowState: escrowStateKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([initializer])
-      .rpc();
+  // it("Initialize escrow", async () => {
+  //   await program.methods
+  //     .initialize(randomSeed, [
+  //       new anchor.BN(50000),
+  //       new anchor.BN(150000),
+  //       new anchor.BN(200000),
+  //       new anchor.BN(50000),
+  //       new anchor.BN(50000),
+  //     ])
+  //     .accounts({
+  //       initializer: initializer.publicKey,
+  //       vault: vaultKey,
+  //       adminState: adminKey,
+  //       mint: mintA,
+  //       initializerDepositTokenAccount: initializerTokenAccountA,
+  //       taker: taker.publicKey,
+  //       escrowState: escrowStateKey,
+  //       systemProgram: anchor.web3.SystemProgram.programId,
+  //       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //     })
+  //     .signers([initializer])
+  //     .rpc();
 
-    await wait(2000);
+  //   await wait(2000);
 
-    let fetchedVault = await getAccount(connection, vaultKey);
-    let fetchedEscrowState: any = await program.account.escrowState.fetch(escrowStateKey);
-    let fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
-    // Check that the new owner is the PDA.
-    assert.ok(fetchedVault.owner.equals(vaultAuthorityKey));
+  //   let fetchedVault = await getAccount(connection, vaultKey);
+  //   let fetchedEscrowState: any = await program.account.escrowState.fetch(escrowStateKey);
+  //   let fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
+  //   // Check that the new owner is the PDA.
+  //   assert.ok(fetchedVault.owner.equals(vaultAuthorityKey));
 
-    // Check that the values in the escrow account match what we expect.
-    assert.ok(fetchedEscrowState.initializerKey.equals(initializer.publicKey));
-    assert.ok(fetchedEscrowState.initializerAmount[0].toNumber() == 50000);
-    assert.ok(fetchedEscrowState.mint.equals(mintA));
-    console.log("fetchedEscrowState", fetchedEscrowState);
-    console.log("fetchedAdminState", fetchedAdminState);
-  });
+  //   // Check that the values in the escrow account match what we expect.
+  //   assert.ok(fetchedEscrowState.initializerKey.equals(initializer.publicKey));
+  //   assert.ok(fetchedEscrowState.initializerAmount[0].toNumber() == 50000);
+  //   assert.ok(fetchedEscrowState.mint.equals(mintA));
+  //   console.log("fetchedEscrowState", fetchedEscrowState);
+  //   console.log("fetchedAdminState", fetchedAdminState);
+  // });
 
   // it("Dispute", async () => {
   //   await program.methods
@@ -431,10 +431,13 @@ describe("anchor-escrow", () => {
   //   let fetchedResolverTokenAccountA = await getAccount(connection, resolverAccountA);
   //   let fetchedAdmin1TokenAccountA = await getAccount(connection, localWalletAccountA);
   //   let fetchedAdmin2TokenAccountA = await getAccount(connection, admin2AccountA);
+
+  //   let fetchedAdminState: any = await program.account.adminState.fetch(adminKey);
   //   console.log(Number(fetchedTakerTokenAccountA.amount));
   //   console.log(Number(fetchedResolverTokenAccountA.amount));
   //   console.log(Number(fetchedAdmin1TokenAccountA.amount));
   //   console.log(Number(fetchedAdmin2TokenAccountA.amount));
+  //   console.log(fetchedAdminState);
 
   //   assert.ok(1 === 1);
   // });

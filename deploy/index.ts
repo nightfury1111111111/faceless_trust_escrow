@@ -26,7 +26,7 @@ describe("anchor-escrow", () => {
 
   // CAUTTION: if you are intended to use the program that is deployed by yourself,
   // please make sure that the programIDs are consistent
-  const programId = new PublicKey("FFeF95f36kdrrS1J4o19w4kQDLkxyDopjAveyEAUqzmy");
+  const programId = new PublicKey("42CaSMx617x7HPdmX3kg62qpxcnmXicifZPvPYqcSy1S");
   const program = new anchor.Program(IDL, programId, provider);
 
   // Determined Seeds

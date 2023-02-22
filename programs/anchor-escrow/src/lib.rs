@@ -4,7 +4,7 @@ use anchor_spl::token::{
     TokenAccount, Transfer,
 };
 
-declare_id!("FFeF95f36kdrrS1J4o19w4kQDLkxyDopjAveyEAUqzmy");
+declare_id!("42CaSMx617x7HPdmX3kg62qpxcnmXicifZPvPYqcSy1S");
 
 #[program]
 pub mod anchor_escrow {
@@ -245,6 +245,9 @@ pub mod anchor_escrow {
                 * ctx.accounts.admin_state.resolver_fee
                 / 100,
         )?;
+
+        ctx.accounts.admin_state.locked_amount = ctx.accounts.admin_state.locked_amount
+            - ctx.accounts.escrow_state.initializer_amount[milestone_idx as usize];
 
         if ctx.accounts.escrow_state.initializer_amount[0]
             + ctx.accounts.escrow_state.initializer_amount[1]
@@ -672,7 +675,7 @@ pub struct EscrowState {
 
 impl EscrowState {
     pub fn space() -> usize {
-        8 + 147
+        8 + 148
     }
 }
 
