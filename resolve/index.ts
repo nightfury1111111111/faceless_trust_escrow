@@ -34,7 +34,7 @@ describe("anchor-escrow", () => {
 
   // CAUTTION: if you are intended to use the program that is deployed by yourself,
   // please make sure that the programIDs are consistent
-  const programId = new PublicKey("42CaSMx617x7HPdmX3kg62qpxcnmXicifZPvPYqcSy1S");
+  const programId = new PublicKey("6uTv8WneofYnJYnBC8we7kbgSfqT3eoU87DFYFxduMFi");
   const program = new anchor.Program(IDL, programId, provider);
 
   let mintA = new PublicKey("Ad4JSN6xUeok3JVgow9LTJ8GW1K1y8W397nsZrNYYW5E");
